@@ -29,6 +29,7 @@ function buildHeaders(accessKeyId, accessKeySecret, bodyStr) {
     const sig = hmacSha256(accessKeySecret, signStr);
 
     return {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
         'x-bili-accesskeyid': accessKeyId,
         'x-bili-content-md5': contentMd5,
@@ -53,6 +54,8 @@ function request(method, path, body, config) {
         };
 
         const req = https.request(opts, (res) => {
+            // 按 UTF-8 流式解码，避免中文被分块截断成乱码
+            res.setEncoding('utf8');
             let data = '';
             res.on('data', c => data += c);
             res.on('end', () => {
@@ -61,6 +64,8 @@ function request(method, path, body, config) {
             });
         });
         req.on('error', (e) => reject(new Error('API 请求失败: ' + e.message)));
+        // 没有超时的话，网络卡住时 start/end 会一直挂起，重连和退出都会被拖住
+        req.setTimeout(10000, () => req.destroy(new Error('请求超时')));
         req.write(bodyStr);
         req.end();
     });
@@ -76,6 +81,9 @@ async function start(config) {
     if (res.code !== 0) {
         const msg = res.message || res.msg || JSON.stringify(res);
         throw new Error('项目启动失败: ' + msg);
+    }
+    if (!res.data || !res.data.game_info || !res.data.websocket_info) {
+        throw new Error('项目启动失败: 响应缺少 game_info / websocket_info');
     }
 
     return {
