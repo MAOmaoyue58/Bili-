@@ -1,7 +1,10 @@
 @echo off
 rem Build both overlay versions into the folder of this script (repo root).
+rem Usage: build.bat [--no-pause]   (--no-pause is used by scripts/package.js)
 rem Keep this file ASCII-only with CRLF line endings, otherwise cmd misparses it.
 cd /d "%~dp0"
+set "NOPAUSE="
+if /i "%~1"=="--no-pause" set "NOPAUSE=1"
 
 set "FW=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319"
 if not exist "%FW%\csc.exe" (
@@ -22,11 +25,11 @@ if errorlevel 1 goto fail
 echo.
 echo [OK] Build succeeded:
 dir /b DanmakuOverlay-*.exe
-pause
+if not defined NOPAUSE pause
 exit /b 0
 
 :fail
 echo.
 echo [ERROR] Build failed. Please send the messages above.
-pause
+if not defined NOPAUSE pause
 exit /b 1

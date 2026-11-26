@@ -2,9 +2,11 @@ node_modules/
 nodejs/
 package-lock.json
 
-# 编译产物
+# 编译 / 打包产物
 *.exe
 *.pdb
+dist/
+.cache/
 
 # 本机保存的设置（含明文密钥 / 登录 Cookie，切勿提交）
 opl-settings.json

@@ -13,12 +13,12 @@
 
 ## 下载
 
-[Releases 页面](https://github.com/MAOmaoyue58/Bili-/releases) 下载对应版本 zip，解压双击 `start.bat`。
+到 [Releases 页面](../../releases) 下载对应版本的 zip。压缩包里自带 Node.js，不用另外安装任何东西。
 
 ## 快速开始
 
-1. 解压到英文路径（如 `C:\BiliOverlay\`）
-2. 双击 `start.bat`（或直接双击 `overlay\DanmakuOverlay.exe`）
+1. 把整个文件夹解压出来（如 `C:\BiliOverlay\`），不要在压缩包里直接运行
+2. 双击 `DanmakuOverlay-WE.exe`（OPL 版是 `DanmakuOverlay-OPL.exe`），服务端会在后台自动启动
 3. WE版：点齿轮 → 输入直播间号 → 应用（会记住，下次打开自动连接）
 4. OPL版：点齿轮 → 填写开放平台凭证 → 保存并连接
 
@@ -50,7 +50,9 @@
 
 游戏时鼠标显形 → 按 Ctrl+Shift+F12 锁定
 
-程序卡死 → 任务管理器结束 `node.exe` 和 `DanmakuOverlay.exe`
+程序卡死 → 任务管理器结束 `node.exe` 和 `DanmakuOverlay` 开头的进程
+
+首次运行提示「Windows 已保护你的电脑」→ 程序没有数字签名，点「更多信息」→「仍要运行」
 
 ## 构建
 
@@ -76,9 +78,23 @@ npm run start:opl    # OPL 版：node src/server-opl/opl-service.js
 
 配置见 `src/config.js`（端口、默认房间号、Cookie、显示过滤），也可以用环境变量 `BILI_OVERLAY_PORT` / `BILI_ROOM_ID` / `BILI_COOKIE` 覆盖。
 
-浮窗启动时如果本地端口上没有服务端，会自动拉起 node：优先找发布包结构（`server\<脚本>` + `nodejs\node.exe`），找不到再找源码结构（`src\server-*\<脚本>`）和 PATH 里的 `node`。浮窗命令行第一个参数可以指定服务端地址（默认 `ws://localhost:3000`），端口会同步传给自动启动的服务端。
+浮窗启动时如果本地端口上没有服务端，会自动拉起 node：在 exe 所在目录（及上两级）找 `src\server-*\<脚本>`，优先用同目录下的 `nodejs\node.exe`，没有就用 PATH 里的 `node`。浮窗命令行第一个参数可以指定服务端地址（默认 `ws://localhost:3000`），端口会同步传给自动启动的服务端。
 
 OPL 版在浮窗里保存的凭证写在 `src/opl-settings.json`（明文，已加入 `.gitignore`），不要外传。
+
+### 打包发布
+
+```bash
+npm install
+npm run package
+```
+
+会在 `dist/` 下生成 `BiliOverlay-WE-v<版本>.zip` 和 `BiliOverlay-OPL-v<版本>-preview.zip`，版本号取自 `package.json`。
+
+- 只能在 Windows 上运行：先调用 `build.bat` 编译浮窗，再用系统自带的 `tar.exe` 压缩。
+- 每个压缩包都带一份官方 Node.js（版本见 `scripts/package.js`），下载后会校验 SHA256，并缓存在 `.cache/`。
+- 只按白名单复制文件，本机设置文件不会进包；打包后还会扫描一遍，发现疑似 Cookie 就中止。
+- 压缩包的 SHA256 写在 `dist/SHA256SUMS.txt`。
 
 ## 许可证
 
