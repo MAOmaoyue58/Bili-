@@ -1,3 +1,4 @@
+// B站直播弹幕协议（封包 / 解包 / 消息解析），WE 版和 OPL 版共用
 const zlib = require('zlib');
 
 function encodePacket(op, body, version = 1) {
@@ -51,9 +52,31 @@ function decodePackets(buffer) {
     return messages;
 }
 
-// 表情包正则：纯 [xxx] 格式（可能包含嵌套描述）
 // 纯表情包：一个或多个连续的 [xxx]
-const emoteRe = /^(\[.+]\s*)+$/;
+// 方括号内不允许再出现方括号，否则 "[doge]文字[doge]" 这类正常弹幕也会被误判为纯表情
+const emoteRe = /^(\[[^\[\]]+\]\s*)+$/;
+
+function isPureEmote(text) {
+    return emoteRe.test(String(text == null ? '' : text).trim());
+}
+
+// 颜色归一化：兼容 "#2A60B2" / "2A60B2" / "0x2A60B2" / 十进制整数，返回 { color, colorHex }
+function normalizeColor(value, fallbackHex) {
+    let hex;
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        hex = (value & 0xFFFFFF).toString(16).padStart(6, '0');
+    } else {
+        hex = String(value == null ? '' : value).trim().replace(/^(#|0x)/i, '');
+        if (/^\d+$/.test(hex) && hex.length !== 6) {
+            hex = (parseInt(hex, 10) & 0xFFFFFF).toString(16).padStart(6, '0');
+        } else if (/^[0-9a-f]{3}$/i.test(hex)) {
+            hex = hex.replace(/./g, ch => ch + ch);
+        }
+    }
+    if (!/^[0-9a-f]{6}$/i.test(hex)) hex = fallbackHex || 'ffffff';
+    hex = hex.toLowerCase();
+    return { color: parseInt(hex, 16), colorHex: '#' + hex };
+}
 
 function extractDanmaku(messages) {
     const list = [];
@@ -65,7 +88,7 @@ function extractDanmaku(messages) {
                 const info = msg.info || [];
                 if (!info[1]) continue;
                 // 过滤纯表情包
-                if (emoteRe.test(info[1].trim())) continue;
+                if (isPureEmote(info[1])) continue;
                 const d = {
                     text: info[1],
                     mode: 1,
@@ -75,7 +98,7 @@ function extractDanmaku(messages) {
                     uid: getUserId(msg),
                     timestamp: Date.now(),
                 };
-                d.colorHex = '#' + d.color.toString(16).padStart(6, '0');
+                d.colorHex = normalizeColor(d.color, 'ffffff').colorHex;
                 list.push(d);
             } catch (_) {}
         }
@@ -86,8 +109,7 @@ function extractDanmaku(messages) {
                 list.push({
                     text: d.message || d.content || '',
                     mode: 4, fontSize: 22,
-                    color: parseInt(d.background_price_color || '16777215'),
-                    colorHex: '#' + (d.background_price_color || 'ffffff'),
+                    ...normalizeColor(d.background_price_color || d.background_bottom_color, 'ffffff'),
                     username: (d.user_info && d.user_info.uname) || '',
                     uid: (d.user_info && d.user_info.uid) || 0,
                     price: d.price || 0, isSC: true,
@@ -122,7 +144,7 @@ function extractDanmaku(messages) {
             try {
                 const d = msg.data || msg;
                 list.push({
-                    text: d.giftName + ' x' + (d.num || 1),
+                    text: (d.giftName || d.gift_name || '') + ' x' + (d.num || 1),
                     mode: 4, fontSize: 20,
                     color: 0xFF69B4, colorHex: '#ff69b4',
                     username: d.uname || '', uid: 0,
@@ -154,4 +176,4 @@ function getUserId(msg) {
     return 0;
 }
 
-module.exports = { encodePacket, decodePackets, extractDanmaku };
+module.exports = { encodePacket, decodePackets, extractDanmaku, isPureEmote, normalizeColor };
